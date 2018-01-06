@@ -1,24 +1,24 @@
-FROM node:argon
+FROM node:5
 MAINTAINER Kate Heddleston <kate@opsolutely.com>
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update --fix-missing && apt-get install -y build-essential supervisor rsyslog wget nginx
-
-# stop supervisor service as we'll run it manually
-RUN service supervisor stop
-
 ARG NPM_TOKEN
+ENV NODE_ENV=production
+ENV FORCE_HTTPS=true
 
-# Add logging conf file
-RUN wget -O ./remote_syslog.tar.gz https://github.com/papertrail/remote_syslog2/releases/download/v0.17/remote_syslog_linux_amd64.tar.gz && tar xzf ./remote_syslog.tar.gz && cp ./remote_syslog/remote_syslog /usr/bin/remote_syslog && rm ./remote_syslog.tar.gz && rm -rf ./remote_syslog/
+# Authenticate private NPM registry
+# RUN echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
 
 # Create app directory
-RUN mkdir -p /usr/src/app
-WORKDIR /usr/src/app
+RUN mkdir -p /srv/www/app
+WORKDIR /srv/www/app
 
-# Install app dependencies
-COPY ./docker_files/package.json /usr/src/app/
+COPY package.json package.json
 RUN npm install
 
-EXPOSE 80
+RUN rm -f ~/.npmrc
 
-CMD supervisord -c /etc/supervisor/conf.d/supervisord.conf
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+CMD npm run start
